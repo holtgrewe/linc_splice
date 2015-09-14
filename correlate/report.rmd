@@ -3,18 +3,20 @@
 # general information #
 #######################
 
-# file:       report.rmd
-# author(s):  Marcel Schilling <marcel.schilling@mdc-berlin.de>
-# created:    2015-09-14
-# purpose:    correlate input lncRNA:splice-site binding potential with alternative splicing events
-#             based on given intron/exon/lncRNA coverage
+# file:         report.rmd
+# author(s):    Marcel Schilling <marcel.schilling@mdc-berlin.de>
+# created:      2015-09-14
+# last update:  2015-09-14
+# purpose:      correlate input lncRNA:splice-site binding potential with alternative splicing
+#               events based on given intron/exon/lncRNA coverage
 
 
 ######################################
 # change log (reverse chronological) #
 ######################################
 
-# 2015-09-14: initial version (about section and coverage input printing only)
+# 2015-09-14: added alignments input printing
+#             initial version (about section and coverage input printing only)
 
 
 #################
@@ -81,6 +83,9 @@ options(stringsAsFactors=F)
 # define default (absolute) path of TSV file with intron/exon/lncRNA coverage
 if(!exists("coverage_tsv")) coverage_tsv<-"coverage.tsv"
 
+# define default (absolute) path of TSV file with lncRNA:splice-site alignments
+if(!exists("alignments_tsv")) alignments_tsv<-"alignments.tsv"
+
 
 #############
 # functions #
@@ -105,6 +110,11 @@ read.coverage_tsv<-function(coverage_tsv)
                                ,"\t"
                                )[[1]]
             )
+```
+
+```{r function.read.alignments_tsv,include=F,eval=T}
+# read TSV file with lncRNA:splice-site alignments
+read.alignments_tsv<-read.coverage_tsv
 
 
 ############
@@ -131,7 +141,9 @@ For more details, see the session information below:
 sessionInfo()
 ```
 
-## Coverage input
+## Input
+
+### Coverage
 
 ```{r coverage}
 # read coverage TSV file
@@ -143,4 +155,18 @@ The following table shows the coverage data used as input:
 ```{r print.coverage}
 # pretty-print coverage data table
 kable(coverage)
+```
+
+### Alignments
+
+```{r alignments}
+# read alignments TSV file
+alignments<-read.alignments_tsv(alignments_tsv)
+```
+
+The following table shows the alignments data used as input:
+
+```{r print.alignments}
+# pretty-print alignments data table
+kable(alignments)
 ```
