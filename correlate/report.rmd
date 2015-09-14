@@ -15,7 +15,8 @@
 # change log (reverse chronological) #
 ######################################
 
-# 2015-09-14: fixed typo in comment
+# 2015-09-14: added extraction of coverage values for upstream introns/exons
+#             fixed typo in comment
 #             added extraction of coverage values for aligned lncRNAs
 #             added alignments input printing
 #             initial version (about section and coverage input printing only)
@@ -194,5 +195,27 @@ coverage.lnc_rnas<-setNames(unlist(alply(alignments
                                         )
                                   )
                            ,alignments[,1]                                        # label with aligned lncRNA txid
+                           )
+```
+
+```{r coverage.upstream_features}
+# extract coverage values for introns/exons upstream of splice-sites used in lncRNA:splice-site
+# alignments
+coverage.upstream<-setNames(unlist(alply(alignments
+                                        ,1                                         # per alignment (i.e. row-wise)
+                                        ,function(alignment)
+                                          coverage[(coverage[,1]==alignment[1,7])  # coverage txid == aligned target txid
+                                                  &(coverage[,2]==alignment[1,13]) # coverage type == upstream feature type
+                                                  &(coverage[,3]==alignment[1,14]) # coverage idx  == upstream feature idx
+                                                  ,4                               # get coverage score
+                                                  ]
+                                        )
+                                  )
+                           ,unlist(alply(alignments[,c(7,13,14)]                   # label with aligned target txid
+                                        ,1                                         # and upstream feature type & idx
+                                        ,paste
+                                        ,collapse="."
+                                        )
+                                  )
                            )
 ```
