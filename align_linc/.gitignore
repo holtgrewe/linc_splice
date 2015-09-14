@@ -1,5 +1,4 @@
 .snakemake/
-alignments.bam
 gencode.v19.lncRNA_transcripts.fa
 sge_log/
 transcripts/
