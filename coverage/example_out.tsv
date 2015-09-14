@@ -7,5 +7,5 @@ transcriptB	intron	1	.1	whatever
 transcriptB	exon	2	.3	whatever
 transcriptB	intron	2	.1	whatever
 transcriptB	exon	3	.55	whatever
-lincRNA1	lncRNA	0	.3	whatever
-lincRNA2	lncRNA	0	.8	whatever
+transcriptC	lncRNA	0	.3	whatever
+transcriptD	lncRNA	0	.8	whatever
