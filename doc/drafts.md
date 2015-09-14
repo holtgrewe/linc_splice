@@ -1,4 +1,6 @@
 # Downloaded Files
+LincRNA - fasta - ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_19/gencode.v19.lncRNA_transcripts.fa.gz
+
 
 # File Formats
 
