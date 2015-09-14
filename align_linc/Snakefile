@@ -1,0 +1,70 @@
+#!/usr/bin/env python
+
+LINC_FASTA_URL = 'ftp://ftp.sanger.ac.uk/pub/gencode/Gencode_human/release_19/gencode.v19.lncRNA_transcripts.fa.gz'
+LINC_FASTA = 'gencode.v19.lncRNA_transcripts.fa'
+
+CHUNKS = 24
+
+PREFIX = """
+# force using global tmpdir
+export TMPDIR=/scratch/biocore/mholtgr/tmp
+
+# activate module command
+. /etc/profile.d/modules.sh
+module use /scratch/biocore/ostolpe/tools/easybuild/modules/all
+"""
+
+rule all:
+    input:
+        LINC_FASTA,
+        'alignments.bam'
+
+rule concat:
+    input: ['transcripts/{chunk:02d}.bam'.format(chunk=i) for i in range(CHUNKS)]
+    output: 'alignments.bam'
+    shell:
+        """
+        {PREFIX}
+
+        module load BWA
+        module load SAMtools
+
+        samtools cat -o {output} {input}
+        """
+
+rule align:
+    input: 'transcripts/{chunk}.fa'
+    output: 'transcripts/{chunk}.bam'
+    shell:
+        r"""
+        {PREFIX}
+
+        module load BWA
+        module load SAMtools
+
+        bwa bwasw \
+            /scratch/biocore/mholtgr/cubi_foundation/static_data/precomputed/BWA/0.7.11/hg19/2015-05-29/hg19.fa \
+            {input} \
+        | samtools view -Sb - \
+        > {output}
+        """
+
+rule split:
+    input: LINC_FASTA
+    output: ['transcripts/{chunk:02d}.fa'.format(chunk=i) for i in range(CHUNKS)]
+    shell:
+        """
+        mkdir -p transcripts
+        split --numeric-suffixes -l 2000 {LINC_FASTA} transcripts/
+        for x in $(ls transcripts/* | grep -v 'fa'); do
+            mv ${{x}} ${{x}}.fa
+        done
+        """
+
+rule download:
+    output: LINC_FASTA
+    shell:
+        """
+        wget {LINC_FASTA_URL}
+        gzip -d {LINC_FASTA}.gz
+        """
