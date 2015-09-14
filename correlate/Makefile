@@ -2,17 +2,19 @@
 # general information #
 #######################
 
-# file:       Makefile
-# created:    2015-09-14
-# author(s):  Marcel Schilling <marcel.schilling@mdc-berlin.de>
-# purpose:    automate correlation sub-project of lncRNA-splice project
+# file:         Makefile
+# created:      2015-09-14
+# last update:  2015-09-14
+# author(s):    Marcel Schilling <marcel.schilling@mdc-berlin.de>
+# purpose:      automate correlation sub-project of lncRNA-splice project
 
 
 ######################################
 # change log (reverse chronological) #
 ######################################
 
-# 2015-09-14: initial version (building HTML report based on coverage example TSV file)
+# 2015-09-14: added alignments example TSV file
+#             initial version (building HTML report based on coverage example TSV file)
 
 
 ####################
@@ -27,6 +29,9 @@ MAKEFILE_DIRECTORY:=$(dir $(MAKEFILE))
 
 # (absolute) path of TSV file with intron/exon/lncRNA coverage
 COVERAGE_TSV:=$(MAKEFILE_DIRECTORY)coverage.example.tsv
+
+# (absolute) path of TSV file with lncRNA:splice-site alignments
+ALIGNMENTS_TSV:=$(MAKEFILE_DIRECTORY)alignments.example.tsv
 
 # (absolute) path of R-Markdown file used to generate the report
 REPORT_RMD:=$(MAKEFILE_DIRECTORY)report.rmd
@@ -80,6 +85,7 @@ SPACE+=
 # define multi-line report parameters (must not include single-quotes)
 define REPORT_PARAMS
   coverage_tsv<-"$(COVERAGE_TSV)"
+  alignments_tsv<-"$(ALIGNMENTS_TSV)"
 endef
 
 # define helper variable to use multi-line variable as multi-line string
@@ -92,7 +98,7 @@ endef
 REPORT_PARAMS:=$(subst $(newline),;,${REPORT_PARAMS})
 
 # knit report to Markdown passing parameters
-$(REPORT_MD) : $(REPORT_RMD) $(COVERAGE_TSV) | $(dir $(REPORT_MD))
+$(REPORT_MD) : $(REPORT_RMD) $(COVERAGE_TSV) $(ALIGNMENTS_TSV) | $(dir $(REPORT_MD))
 	$(RUN_R_COMMAND) '$(REPORT_PARAMS);require(knitr);knit("$<",output="$@")'
 
 # convert Markdown to HTML
