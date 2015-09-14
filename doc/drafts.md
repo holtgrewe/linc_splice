@@ -1,5 +1,10 @@
-LINC Information
-----------------
+# Downloaded Files
+
+# File Formats
+
+## Mapping LINC to Genome
+
+### LINC Information
 
 1. LINC ENSEMBL transcript ID
 2. LINC ENSEMBL gene ID of transcript
@@ -7,8 +12,7 @@ LINC Information
 4. match, begin position on chromosome
 5. match, end position on chromosome
 
-Target Information
-------------------
+### Target Information
 
 6. Target transcript ID or NA
 7. Target gene ID or NA
@@ -16,8 +20,7 @@ Target Information
 11. match, begin position on chromosome
 12. match, end position on chromosome
 
-Candidate Events
-----------------
+### Candidate Events
 
 12. comma-separated list of 1-based number of exon that is possibly skipped
 13. comma-separated list of 1-based number of intron where bases might be retained or "0" for none
