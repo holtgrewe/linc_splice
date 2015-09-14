@@ -15,7 +15,8 @@
 # change log (reverse chronological) #
 ######################################
 
-# 2015-09-14: added alignments input printing
+# 2015-09-14: added extraction of coverage values for aligned lncRNAs
+#             added alignments input printing
 #             initial version (about section and coverage input printing only)
 
 
@@ -73,6 +74,15 @@ knit_hooks$set(inline = function(output) ifelse(is.numeric(output),prettyNum(out
 # set options as suggested by Filippos
 options(width=150, digits=10)
 options(stringsAsFactors=F)
+```
+
+```{r libraries,include=F,eval=T,cache=F}
+#############
+# libraries #
+#############
+
+# use efficient apply functions
+require(plyr)
 ```
 
 ```{r parameters,include=F,eval=T,cache=F}
@@ -169,4 +179,19 @@ The following table shows the alignments data used as input:
 ```{r print.alignments}
 # pretty-print alignments data table
 kable(alignments)
+```
+
+```{r coverage.lnc_rnas}
+# extract coverage values for lncRNAs used in lncRNA:splice-site alignments
+coverage.lnc_rnas<-setNames(unlist(alply(alignments
+                                        ,1                                        # per alignment (i.e. row-wise)
+                                        ,function(alignment)
+                                          coverage[(coverage[,2]=="lncRNA")       # coverage type == lncRNA
+                                                  &(coverage[,1]==alignment[1,1]) # coverage txid == aligned lncRNA txid
+                                                  ,4                              # get alignment coverage score
+                                                  ]
+                                        )
+                                  )
+                           ,alignments[,1]                                        # label with aligned lncRNA txid
+                           )
 ```
