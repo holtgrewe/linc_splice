@@ -1,0 +1,9 @@
+#txid	type	idx	expression	more...
+transcriptA	exon	1	.8	whatever
+transcriptA	intron	1	.7	whatever
+transcriptA	exon	2	.75	whatever
+transcriptB	exon	1	.6	whatever
+transcriptB	intron	1	.1	whatever
+transcriptB	exon	2	.3	whatever
+transcriptB	intron	2	.1	whatever
+transcriptB	exon	3	.55	whatever
