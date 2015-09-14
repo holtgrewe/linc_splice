@@ -15,7 +15,8 @@
 # change log (reverse chronological) #
 ######################################
 
-# 2015-09-14: added extraction of coverage values for downstream introns/exons
+# 2015-09-14: added integrated data printing
+#             added extraction of coverage values for downstream introns/exons
 #             added extraction of coverage values for upstream introns/exons
 #             fixed typo in comment
 #             added extraction of coverage values for aligned lncRNAs
@@ -184,6 +185,8 @@ The following table shows the alignments data used as input:
 kable(alignments)
 ```
 
+## Data integration
+
 ```{r coverage.lnc_rnas}
 # extract coverage values for lncRNAs used in lncRNA:splice-site alignments
 coverage.lnc_rnas<-setNames(unlist(alply(alignments
@@ -241,4 +244,16 @@ coverage.downstream<-setNames(unlist(alply(alignments
                                         )
                                   )
                            )
+```
+
+```{r integrate.coverage}
+# integrate necessary coverage values and meta data into one data frame
+coverage<-cbind(alignments[,c(1,7,13:16)],coverage.lnc_rnas,coverage.upstream,coverage.downstream)
+```
+
+The follwing table shows the combined data from both other sub-projects ready to start statistics:
+
+```{r print.integrated.coverage}
+# pretty-print integrated data table
+kable(coverage)
 ```
