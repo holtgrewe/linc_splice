@@ -15,7 +15,8 @@
 # change log (reverse chronological) #
 ######################################
 
-# 2015-09-14: added extraction of coverage values for aligned lncRNAs
+# 2015-09-14: fixed typo in comment
+#             added extraction of coverage values for aligned lncRNAs
 #             added alignments input printing
 #             initial version (about section and coverage input printing only)
 
@@ -188,7 +189,7 @@ coverage.lnc_rnas<-setNames(unlist(alply(alignments
                                         ,function(alignment)
                                           coverage[(coverage[,2]=="lncRNA")       # coverage type == lncRNA
                                                   &(coverage[,1]==alignment[1,1]) # coverage txid == aligned lncRNA txid
-                                                  ,4                              # get alignment coverage score
+                                                  ,4                              # get coverage score
                                                   ]
                                         )
                                   )
