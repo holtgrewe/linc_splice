@@ -1,0 +1,25 @@
+#######################
+# general information #
+#######################
+
+# file:       .gitignore
+# created:    2015-09-14
+# author(s):  Marcel Schilling <marcel.schilling@mdc-berlin.de>
+# purpose:    untrack target and temporary/intermediate files created for correlation sub-project of
+#             lncRNA-splice project
+
+
+######################################
+# change log (reverse chronological) #
+######################################
+
+# 2015-09-14: initial version (report generation output files)
+
+
+##################################
+# report generation output files #
+##################################
+
+/knitr/
+/report.md
+/report.html

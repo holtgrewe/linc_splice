@@ -1,0 +1,146 @@
+```{r knitr_options,include=F,eval=T,cache=F}
+#######################
+# general information #
+#######################
+
+# file:       report.rmd
+# author(s):  Marcel Schilling <marcel.schilling@mdc-berlin.de>
+# created:    2015-09-14
+# purpose:    correlate input lncRNA:splice-site binding potential with alternative splicing events
+#             based on given intron/exon/lncRNA coverage
+
+
+######################################
+# change log (reverse chronological) #
+######################################
+
+# 2015-09-14: initial version (about section and coverage input printing only)
+
+
+#################
+# knitr options #
+#################
+
+# define default working directory to use absolute paths in resulting Markdown (if not defined in
+# knit'ing R session)
+if(!exists("working_directory")){
+  working_directory <- getwd()
+} else {
+
+  # remove final slash from working directory defined in the knit'ing R session
+  working_directory <- sub("/$","",working_directory)
+
+  # set working directory to the one defined in the knit'ing R session
+  setwd(working_directory)
+}
+
+# set knitr options as suggested by Filippos
+opts_knit$set(width          = 150,
+              self.contained = T
+             )
+
+# set code chunks options as suggested by Filippos
+opts_chunk$set(comment    = NA,
+               tidy       = F,
+               highlight  = T,
+               prompt     = T,
+               fig.path   = paste(working_directory,"knitr/figures/",sep="/"),
+               fig.keep   = "high",
+               fig.show   = "asis",
+               background = "#F5F5DC",
+               echo       = F,
+               cache      = T,
+               autodep    = T,
+               cache.path = paste(working_directory,"knitr/cache/",sep="/"),
+               message    = F,
+               warning    = F,
+               error      = F
+              )
+
+# adjust output format for inline code chunks to use a thousands separator
+knit_hooks$set(inline = function(output) ifelse(is.numeric(output),prettyNum(output,big.mark=','),output))
+
+# set non-knitr options in another code chunk as suggested by Filippos
+```
+
+```{r r_options,include=F,eval=T,cache=F}
+#############
+# R options #
+#############
+
+# set options as suggested by Filippos
+options(width=150, digits=10)
+options(stringsAsFactors=F)
+```
+
+```{r parameters,include=F,eval=T,cache=F}
+##############
+# parameters #
+##############
+
+# define default (absolute) path of TSV file with intron/exon/lncRNA coverage
+if(!exists("coverage_tsv")) coverage_tsv<-"coverage.tsv"
+
+
+#############
+# functions #
+#############
+
+# define each function in its own cached code chunk to allow dependence on those chunks to force
+# re-evaluation of chached code chunks using the function in case the function gets modified.
+```
+
+```{r function.read.coverage_tsv,include=F,eval=T}
+# read TSV file with intron/exon/lncRNA coverage setting names based on (commented) header row
+read.coverage_tsv<-function(coverage_tsv)
+  read.table(coverage_tsv
+            ,sep="\t"
+            ,header=F
+            ,col.names=strsplit(sub("^#"
+                                   ,""
+                                   ,readLines(coverage_tsv
+                                             ,1
+                                             )
+                                   )
+                               ,"\t"
+                               )[[1]]
+            )
+
+
+############
+# document #
+############
+```
+
+# Hackathon lncRNA:splice-site report
+
+## About this report
+
+### Report generation information
+
+This report was generated at `r as.character(Sys.time())` by user ` `r Sys.info()["login"]` ` on
+computer ` `r Sys.info()["nodename"]` ` running
+` knitr version `r as.character(packageVersion("knitr"))` ` and
+` markdown version `r as.character(packageVersion("markdown"))` ` in ` `r version$version.string` `
+under ` `r Sys.info()["sysname"]` `r Sys.info()["release"]` (`r Sys.info()["version"]`) ` based on
+data in [this directory](`r working_directory`).
+
+For more details, see the session information below:
+
+```{r sessionInfo,echo=T,cache=F}
+sessionInfo()
+```
+
+## Coverage input
+
+```{r coverage}
+# read coverage TSV file
+coverage<-read.coverage_tsv(coverage_tsv)
+```
+
+The following table shows the coverage data used as input:
+
+```{r print.coverage}
+# pretty-print coverage data table
+kable(coverage)
+```
