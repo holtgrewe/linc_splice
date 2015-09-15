@@ -1,0 +1,29 @@
+#!/usr/bin/env python3
+
+rule all:
+    input:
+        'bwamem.result.tsv.gz',
+        'bwasw.result.tsv.gz'
+
+rule gzip:
+    input: '{file}'
+    output: '{file}.gz'
+    shell:
+        """
+        gzip {input}
+        """
+
+rule map_linc:
+    input:
+        script='map_linc.py',
+        gtf='../data/gencode.v19.annotation.gtf.gz',
+        bam='../align_linc/{prefix}.alignments.bam'
+    output:
+        temp('{prefix}.result.tsv')
+    shell:
+        """
+        ./map_linc.py \
+            --gencode-gtf {input.gtf} \
+            --alignment-bam {input.bam} \
+            --output-tsv {output}
+        """

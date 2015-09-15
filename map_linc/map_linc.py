@@ -26,33 +26,87 @@ class TranscriptIDInfo:
         self.ensembl_gene_id = ensembl_gene_id
         self.rest = args
 
+CIGAR_MAP = dict((x, i) for i, x in enumerate('MIDNSHP=X'))
 
-def chunk_by_query(ali_file):
+
+def proc_cigar(cigar_s):
+    result = []
+    curr = []
+    for x in cigar_s:
+        if x.isdigit():
+            curr.append(x)
+        else:
+            result.append((CIGAR_MAP[x], int(''.join(curr))))
+            curr = []
+    return tuple(result)
+
+
+def expand_xa_tag(record, ali_file):
+    result = [(record, int(dict(record.tags)['NM']))]
+    tags = dict(record.tags)
+    if not tags.get('XA'):
+        return result
+    for xa in tags['XA'].split(';'):
+        if not xa:
+            continue  # ignore last
+        chrom, pos, cigar, nm = xa.split(',')
+        strand = pos[0]
+        pos = pos[1:]
+        a = pysam.AlignedSegment()
+        a.query_name = record.query_name
+        a.query_sequence = record.query_sequence
+        a.flag = (0 if strand == '+' else 16)
+        a.reference_id = ali_file.gettid(chrom)
+        a.reference_start = int(pos) - 1
+        if strand == '-':
+            a.cigar = list(reversed(proc_cigar(cigar)))
+        else:
+            a.cigar = proc_cigar(cigar)
+        result.append((a, nm))
+    return result
+
+
+def chunk_by_query(ali_file, expand_xa=False):
     """Read in the pysam AlignmentFile ali_file chunk-wise
 
     Return iterator of lists of pysam alignment records.
+
+    Actually, (record, nm) pairs as there is a problem with tags and
+    Python 3 with pysam.
     """
     result = []
     for x in ali_file:
-        if result and x.query_name != result[0].query_name:
+        if result and x.query_name != result[0][0].query_name:
             yield result
-            result = [x]
+            if expand_xa:
+                result = expand_xa_tag(x, ali_file)
+            else:
+                result = [(x, int(dict(x.tags)['NM']))]
         else:
-            result.append(x)
+            if expand_xa:
+                result += expand_xa_tag(x, ali_file)
+            else:
+                result.append((x, int(dict(x.tags)['NM'])))
     if result:
         yield result
 
 
 class OutputRecord:
 
-    def __init__(self, match_region, exon, linc_tx, window_5, window_3,
-                 classes=[]):
+    def __init__(self, match_region, exon, linc_tx, linc_length,
+                 linc_ali_length, errors, window_5, window_3, classes=[]):
         #: Region of the match
         self.match_region = match_region
         #: GTFFeature of the target exon
         self.exon = exon
         #: GTFFeature of the lincRNA transcript
         self.linc_tx = linc_tx
+        #: length of the lincRNA transcript
+        self.linc_length = linc_length
+        #: length of alignment in lincRNA
+        self.linc_ali_length = linc_ali_length
+        #: number of alignment errors
+        self.errors = errors
         #: Window relative to 5' end
         self.window_5 = window_5
         #: Window relative to 3' end
@@ -67,6 +121,7 @@ class OutputRecord:
             self.linc_tx.seqname,
             self.linc_tx.start + 1,
             self.linc_tx.end,
+            self.linc_length,
             self.exon.attrs['transcript_id'],
             self.exon.attrs['gene_id'],
             self.exon.attrs['exon_id'],
@@ -78,6 +133,10 @@ class OutputRecord:
             self.match_region.seqname,
             self.match_region.start + 1,
             self.match_region.end,
+            self.linc_ali_length,
+            '{:.1f}'.format(
+                100 * self.linc_ali_length / self.linc_length),
+            '{:.1f}'.format(self.errors / self.linc_ali_length),
         ]
         result += list(self.window_5.to_tuple())
         result += list(self.window_3.to_tuple())
@@ -95,6 +154,7 @@ class OutputRecord:
                 'linc_chrom',
                 'linc_start',
                 'linc_end',
+                'linc_length',
                 'target_tx_id',
                 'target_gene_id',
                 'target_exon_id',
@@ -106,11 +166,15 @@ class OutputRecord:
                 'match_chrom',
                 'match_start',
                 'match_end',
+                'match_linc_length',
+                'match_linc_coverage',
+                'match_linc_erate',
                 'exon_5_prime_window_start',
                 'exon_5_prime_window_end',
                 'exon_3_prime_window_start',
                 'exon_3_prime_window_end',
-                'classes']
+                'classes',
+                ]
 
 
 class App:
@@ -170,7 +234,7 @@ class App:
         """
         print('#' + '\t'.join(OutputRecord.get_header_fields()),
               file=self.args.output_tsv)
-        for chunk in chunk_by_query(self.sam_file):
+        for chunk in chunk_by_query(self.sam_file, expand_xa=True):
             #print('STARTING CHUNK', file=sys.stderr)
             if not chunk:
                 continue  # ignore empty chunks
@@ -182,15 +246,15 @@ class App:
         For each chunk, each match is considered in handle_match.
         """
         # get information for lincRNA transcript in chunk
-        first = chunk[0]  # shortcut
+        first = chunk[0][0]  # shortcut
         id_info = TranscriptIDInfo.parse(first.query_name)
         linc_tx = self.tx_info_by_id[id_info.ensembl_tx_id]
         if 'lincRNA' not in linc_tx.transcript_type:
             return  # only consider of is lincRNA transcript
-        for match in chunk:
-            self.handle_match(linc_tx, match)
+        for match, nm in chunk:
+            self.handle_match(linc_tx, match, nm)
 
-    def handle_match(self, linc_tx, match):
+    def handle_match(self, linc_tx, match, nm):
         """Handle one match of a lincRNA against the genome
 
         For each match, look at all overlapping exons and consider them
@@ -221,9 +285,16 @@ class App:
                 window_5 = exon.get_5_prime_window(region)
                 window_3 = exon.get_3_prime_window(region)
                 classes = self.compute_classes(exon, window_5, window_3)
+
+                def ali_length(cigar):
+                    OP = 'MIDNSHP=X'
+                    return sum(num for op, num in cigar if OP[op] in 'MI=X')
+
                 # generate and write out OutputRecord
-                out = OutputRecord(region, exon, linc_tx, window_5, window_3,
-                                   classes)
+                out = OutputRecord(
+                        region, exon, linc_tx, len(match.query_sequence),
+                        ali_length(match.cigar), int(nm),
+                        window_5, window_3, classes)
                 print(out.to_tsv(), file=self.args.output_tsv)
         except tabix.TabixError as e:
             pass  # swallow, probably some unplaced region

@@ -30,6 +30,9 @@ class Region:
         self.start = start
         self.end = end
 
+    def length(self):
+        return self.end - self.start
+
     def to_tuple(self):
         return (self.seqname, self.start, self.end)
 

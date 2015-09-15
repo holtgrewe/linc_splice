@@ -1,3 +1,4 @@
 transcripts.db
 _venv
 _tx_cache.bin
+.snakemake
