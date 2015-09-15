@@ -4,7 +4,7 @@
 
 # file:         Makefile
 # created:      2015-09-14
-# last update:  2015-09-14
+# last update:  2015-09-15
 # author(s):    Marcel Schilling <marcel.schilling@mdc-berlin.de>
 # purpose:      automate correlation sub-project of lncRNA-splice project
 
@@ -13,6 +13,7 @@
 # change log (reverse chronological) #
 ######################################
 
+# 2015-09-15: switched from example alignments to real data
 # 2015-09-14: added alignments example TSV file
 #             initial version (building HTML report based on coverage example TSV file)
 
@@ -31,7 +32,7 @@ MAKEFILE_DIRECTORY:=$(dir $(MAKEFILE))
 COVERAGE_TSV:=$(MAKEFILE_DIRECTORY)coverage.example.tsv
 
 # (absolute) path of TSV file with lncRNA:splice-site alignments
-ALIGNMENTS_TSV:=$(MAKEFILE_DIRECTORY)alignments.example.tsv
+ALIGNMENTS_TSV:=$(MAKEFILE_DIRECTORY)alignments.tsv.gz
 
 # (absolute) path of R-Markdown file used to generate the report
 REPORT_RMD:=$(MAKEFILE_DIRECTORY)report.rmd
