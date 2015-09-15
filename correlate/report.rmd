@@ -15,7 +15,8 @@
 # change log (reverse chronological) #
 ######################################
 
-# 2015-09-15: adjusted to upstream changes in alignment input format
+# 2015-09-15: adjusted to moree upstream changes in alignment input format
+#             adjusted to upstream changes in alignment input format
 #             added lncRNA effect factor vs. splice rate scatter plot
 #             added lncRNA:splice-site binding score to integrated data
 #             added explicit name definitions to integrated data
@@ -137,17 +138,17 @@ read.coverage_tsv<-function(coverage_tsv)
 # read TSV file with lncRNA:splice-site alignments
 read.alignments_tsv<-function(alignments_tsv) {
   alignments<-read.coverage_tsv(alignments_tsv)
-  alignments<-rbind(data.frame(alignments[(grep("intron_5",alignments[,21])),]
+  alignments<-rbind(data.frame(alignments[(grep("intron_5",alignments[,25])),]
                               ,upstream.type="intron"
                               ,downstream.type="exon"
                               )
-                   ,data.frame(alignments[(grep("intron_3",alignments[,21])),]
+                   ,data.frame(alignments[(grep("intron_3",alignments[,25])),]
                               ,upstream.type="exon"
                               ,downstream.type="intron"
                               )
                    )
-  alignments$upstream.idx<-alignments[,9]-(alignments$upstream.type!="exon")
-  alignments$downtream.idx<-alignments[,9]
+  alignments$upstream.idx<-alignments[,10]-(alignments$upstream.type!="exon")
+  alignments$downtream.idx<-alignments[,10]
   return(alignments)
 }
 
@@ -229,14 +230,14 @@ coverage.lnc_rnas<-setNames(unlist(alply(alignments
 coverage.upstream<-setNames(unlist(alply(alignments
                                         ,1                                                    # per alignment (i.e. row-wise)
                                         ,function(alignment)
-                                          coverage[(coverage[,1]==alignment[1,6])             # coverage txid == aligned target txid
+                                          coverage[(coverage[,1]==alignment[1,7])             # coverage txid == aligned target txid
                                                   &(coverage[,2]==alignment$upstream.type[1]) # coverage type == upstream feature type
                                                   &(coverage[,3]==alignment$upstream.idx[1])  # coverage idx  == upstream feature idx
                                                   ,4                                          # get coverage score
                                                   ]
                                         )
                                   )
-                           ,unlist(alply(cbind(alignments[,6]           # label with aligned target txid
+                           ,unlist(alply(cbind(alignments[,7]           # label with aligned target txid
                                               ,alignments$upstream.type # and upstream feature type
                                               ,alignments$upstream.idx  # & idx
                                               )
@@ -254,14 +255,14 @@ coverage.upstream<-setNames(unlist(alply(alignments
 coverage.downstream<-setNames(unlist(alply(alignments
                                           ,1                                                      # per alignment (i.e. row-wise)
                                           ,function(alignment)
-                                            coverage[(coverage[,1]==alignment[1,6])               # coverage txid == aligned target txid
+                                            coverage[(coverage[,1]==alignment[1,7])               # coverage txid == aligned target txid
                                                     &(coverage[,2]==alignment$downstream.type[1]) # coverage type == upstream feature type
                                                     &(coverage[,3]==alignment$downstream.idx[1])  # coverage idx  == upstream feature idx
                                                     ,4                                            # get coverage score
                                                     ]
                                           )
                                     )
-                             ,unlist(alply(cbind(alignments[,6]             # label with aligned target txid
+                             ,unlist(alply(cbind(alignments[,7]             # label with aligned target txid
                                                 ,alignments$downstream.type # and downstream feature type
                                                 ,alignments$downstream.idx  # & idx
                                                 )
@@ -275,12 +276,12 @@ coverage.downstream<-setNames(unlist(alply(alignments
 
 ```{r integrate.coverage}
 # integrate necessary coverage values and meta data into one data frame
-coverage<-setNames(cbind(alignments[,c(1,6)]
+coverage<-setNames(cbind(alignments[,c(1,7)]
                         ,alignments$upstream.type
                         ,alignments$upstream.idx
                         ,alignments$downstream.type
                         ,alignments$downstream.idx
-                        ,1
+                        ,alignments[,19]
                         ,coverage.lnc_rnas
                         ,coverage.upstream
                         ,coverage.downstream
