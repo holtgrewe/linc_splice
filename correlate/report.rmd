@@ -6,7 +6,7 @@
 # file:         report.rmd
 # author(s):    Marcel Schilling <marcel.schilling@mdc-berlin.de>
 # created:      2015-09-14
-# last update:  2015-09-14
+# last update:  2015-09-15
 # purpose:      correlate input lncRNA:splice-site binding potential with alternative splicing
 #               events based on given intron/exon/lncRNA coverage
 
@@ -15,6 +15,9 @@
 # change log (reverse chronological) #
 ######################################
 
+# 2015-09-15: added lncRNA effect factor vs. splice rate scatter plot
+#             added lncRNA:splice-site binding score to integrated data
+#             added explicit name definitions to integrated data
 # 2015-09-14: added integrated data printing
 #             added extraction of coverage values for downstream introns/exons
 #             added extraction of coverage values for upstream introns/exons
@@ -87,6 +90,9 @@ options(stringsAsFactors=F)
 
 # use efficient apply functions
 require(plyr)
+
+# nice plots
+require(ggplot2)
 ```
 
 ```{r parameters,include=F,eval=T,cache=F}
@@ -248,7 +254,23 @@ coverage.downstream<-setNames(unlist(alply(alignments
 
 ```{r integrate.coverage}
 # integrate necessary coverage values and meta data into one data frame
-coverage<-cbind(alignments[,c(1,7,13:16)],coverage.lnc_rnas,coverage.upstream,coverage.downstream)
+coverage<-setNames(cbind(alignments[,c(1,7,13:17)]
+                        ,coverage.lnc_rnas
+                        ,coverage.upstream
+                        ,coverage.downstream
+                        )
+                  ,c("lnc_rna"
+                    ,"target"
+                    ,"type.upstream"
+                    ,"idx.upstream"
+                    ,"type.downstream"
+                    ,"idx.downstream"
+                    ,"binding_score"
+                    ,"coverage.lnc_rna"
+                    ,"coverage.upstream"
+                    ,"coverage.downstream"
+                    )
+                  )
 ```
 
 The follwing table shows the combined data from both other sub-projects ready to start statistics:
@@ -256,4 +278,26 @@ The follwing table shows the combined data from both other sub-projects ready to
 ```{r print.integrated.coverage}
 # pretty-print integrated data table
 kable(coverage)
+```
+
+## Correlation
+
+The following scatter plot compares the estimated effect of a lncRNA (its coverage multiplied with
+the binding score) on a splice-site with the corresponding splice rate (ratio of upstream
+exon/intron to downstream exon/intron coverage):
+
+```{r correlate}
+# generate scatter plot of predicted lncRNA effect on splice-site on its splice rate
+ggplot(with(coverage
+           ,data.frame(factor.lnc_rna=coverage.lnc_rna*binding_score
+                      ,splice.rate=coverage.upstream/coverage.downstream
+                      )
+           )
+      ,aes(x=factor.lnc_rna
+          ,y=splice.rate
+          )
+      ) +
+  geom_point() +
+  ggtitle("lncRNA effect factor vs. splice rate") +
+  theme_bw()
 ```
