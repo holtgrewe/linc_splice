@@ -15,7 +15,8 @@
 # change log (reverse chronological) #
 ######################################
 
-# 2015-09-15: added lncRNA:splice-site binding score to integrated data
+# 2015-09-15: added lncRNA effect factor vs. splice rate scatter plot
+#             added lncRNA:splice-site binding score to integrated data
 #             added explicit name definitions to integrated data
 # 2015-09-14: added integrated data printing
 #             added extraction of coverage values for downstream introns/exons
@@ -89,6 +90,9 @@ options(stringsAsFactors=F)
 
 # use efficient apply functions
 require(plyr)
+
+# nice plots
+require(ggplot2)
 ```
 
 ```{r parameters,include=F,eval=T,cache=F}
@@ -274,4 +278,26 @@ The follwing table shows the combined data from both other sub-projects ready to
 ```{r print.integrated.coverage}
 # pretty-print integrated data table
 kable(coverage)
+```
+
+## Correlation
+
+The following scatter plot compares the estimated effect of a lncRNA (its coverage multiplied with
+the binding score) on a splice-site with the corresponding splice rate (ratio of upstream
+exon/intron to downstream exon/intron coverage):
+
+```{r correlate}
+# generate scatter plot of predicted lncRNA effect on splice-site on its splice rate
+ggplot(with(coverage
+           ,data.frame(factor.lnc_rna=coverage.lnc_rna*binding_score
+                      ,splice.rate=coverage.upstream/coverage.downstream
+                      )
+           )
+      ,aes(x=factor.lnc_rna
+          ,y=splice.rate
+          )
+      ) +
+  geom_point() +
+  ggtitle("lncRNA effect factor vs. splice rate") +
+  theme_bw()
 ```
