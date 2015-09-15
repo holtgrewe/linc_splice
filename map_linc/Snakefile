@@ -2,6 +2,7 @@
 
 rule all:
     input:
+        'bowtie2.result.tsv.gz',
         'bwamem.result.tsv.gz',
         'bwasw.result.tsv.gz'
 
