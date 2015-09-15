@@ -6,7 +6,7 @@
 # file:         report.rmd
 # author(s):    Marcel Schilling <marcel.schilling@mdc-berlin.de>
 # created:      2015-09-14
-# last update:  2015-09-14
+# last update:  2015-09-15
 # purpose:      correlate input lncRNA:splice-site binding potential with alternative splicing
 #               events based on given intron/exon/lncRNA coverage
 
@@ -15,6 +15,7 @@
 # change log (reverse chronological) #
 ######################################
 
+# 2015-09-15: added explicit name definitions to integrated data
 # 2015-09-14: added integrated data printing
 #             added extraction of coverage values for downstream introns/exons
 #             added extraction of coverage values for upstream introns/exons
@@ -248,7 +249,22 @@ coverage.downstream<-setNames(unlist(alply(alignments
 
 ```{r integrate.coverage}
 # integrate necessary coverage values and meta data into one data frame
-coverage<-cbind(alignments[,c(1,7,13:16)],coverage.lnc_rnas,coverage.upstream,coverage.downstream)
+coverage<-setNames(cbind(alignments[,c(1,7,13:16)]
+                        ,coverage.lnc_rnas
+                        ,coverage.upstream
+                        ,coverage.downstream
+                        )
+                  ,c("lnc_rna"
+                    ,"target"
+                    ,"type.upstream"
+                    ,"idx.upstream"
+                    ,"type.downstream"
+                    ,"idx.downstream"
+                    ,"coverage.lnc_rna"
+                    ,"coverage.upstream"
+                    ,"coverage.downstream"
+                    )
+                  )
 ```
 
 The follwing table shows the combined data from both other sub-projects ready to start statistics:
