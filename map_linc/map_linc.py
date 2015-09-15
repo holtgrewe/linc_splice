@@ -2,13 +2,11 @@
 
 import argparse
 import gzip
-import shlex
 import sys
 import os.path
 
-from data import TranscriptInfo
+from data import TranscriptInfo, Region, GTFFeature
 
-import GTF
 import pickle
 import pysam
 import tabix
@@ -45,48 +43,74 @@ def chunk_by_query(ali_file):
         yield result
 
 
-GTF_HEADER = ['seqname', 'source', 'feature', 'start', 'end',
-              'score', 'strand', 'frame']
+class OutputRecord:
 
+    def __init__(self, match_region, exon, linc_tx, window_5, window_3,
+                 classes=[]):
+        #: Region of the match
+        self.match_region = match_region
+        #: GTFFeature of the target exon
+        self.exon = exon
+        #: GTFFeature of the lincRNA transcript
+        self.linc_tx = linc_tx
+        #: Window relative to 5' end
+        self.window_5 = window_5
+        #: Window relative to 3' end
+        self.window_3 = window_3
+        #: Classes
+        self.classes = list(classes)
 
-class GTFFeature:
-    """Represents a feature from a GTF file"""
+    def to_list(self):
+        result = [
+            self.linc_tx.transcript_id,
+            self.linc_tx.gene_id,
+            self.linc_tx.seqname,
+            self.linc_tx.start + 1,
+            self.linc_tx.end,
+            self.exon.attrs['transcript_id'],
+            self.exon.attrs['gene_id'],
+            self.exon.attrs['exon_id'],
+            self.exon.attrs['exon_number'],
+            self.exon.attrs['level'],
+            self.exon.seqname,
+            self.exon.start + 1,
+            self.exon.end,
+            self.match_region.seqname,
+            self.match_region.start + 1,
+            self.match_region.end,
+        ]
+        result += list(self.window_5.to_tuple())
+        result += list(self.window_3.to_tuple())
+        result += ['&'.join(sorted(set(self.classes)))
+                   if self.classes else '.']
+        return result
+
+    def to_tsv(self):
+        return '\t'.join(map(str, self.to_list()))
 
     @staticmethod
-    def parse(line=None, arr=None):
-        if not arr:
-            arr = line.rstrip().split('\t')
-        attributes = {}
-        for x in arr[-1].split(';'):
-            tokens = shlex.split(x)
-            if not tokens:
-                pass
-            elif len(tokens) == 1:
-                attributes[tokens[0]] = True
-            elif len(tokens) == 2:
-                attributes[tokens[0]] = tokens[1]
-            else:
-                attributes[tokens[0]] = tokens[1:]
-        arr[-1] = attributes
-        return GTFFeature(*arr)
-
-    def __init__(self, seqname, source, feature, start, end, score,
-                 strand, frame, attrs):
-        self.seqname = seqname
-        self.source = source
-        self.feature = feature
-        self.start = int(start) - 1
-        self.end = int(end)
-        self.score = score
-        self.strand = strand
-        self.frame = frame
-        self.attrs = attrs
-
-    def __str__(self):
-        return 'GTFFeature({})'.format(', '.join(map(repr, map(str, [
-            self.seqname, self.source, self.feature, self.start + 1,
-            self.end, self.score, self.strand, self.frame,
-            self.attrs]))))
+    def get_header_fields():
+        return ['linc_tx_id',
+                'linc_gene_id',
+                'linc_chrom',
+                'linc_start',
+                'linc_end',
+                'target_tx_id',
+                'target_gene_id',
+                'target_exon_id',
+                'target_exon_no',
+                'target_tx_level',
+                'target_exon_chrom',
+                'target_exon_start',
+                'target_exon_end',
+                'match_chrom',
+                'match_start',
+                'match_end',
+                'exon_5_prime_window_start',
+                'exon_5_prime_window_end',
+                'exon_3_prime_window_start',
+                'exon_3_prime_window_end',
+                'classes']
 
 
 class App:
@@ -128,7 +152,10 @@ class App:
                 result.append(
                     TranscriptInfo(record.attrs['gene_id'],
                                    record.attrs['transcript_id'],
-                                   record.attrs['transcript_type']))
+                                   record.attrs['transcript_type'],
+                                   record.seqname,
+                                   record.start,
+                                   record.end))
         with open('_tx_cache.bin', 'wb') as g:
             pickle.dump(result, g)
             print(len(result), file=sys.stderr)
@@ -141,6 +168,8 @@ class App:
         The SAM/BAM file is read in chunk-wise (with matching query names
         used for grouping).
         """
+        print('#' + '\t'.join(OutputRecord.get_header_fields()),
+              file=self.args.output_tsv)
         for chunk in chunk_by_query(self.sam_file):
             #print('STARTING CHUNK', file=sys.stderr)
             if not chunk:
@@ -159,9 +188,9 @@ class App:
         if 'lincRNA' not in linc_tx.transcript_type:
             return  # only consider of is lincRNA transcript
         for match in chunk:
-            self.handle_match(match)
+            self.handle_match(linc_tx, match)
 
-    def handle_match(self, match):
+    def handle_match(self, linc_tx, match):
         """Handle one match of a lincRNA against the genome
 
         For each match, look at all overlapping exons and consider them
@@ -169,27 +198,58 @@ class App:
         """
         # look for exons overlapping with the lincRNA match
         match_strand = ('-' if match.flag & 16 else '+')
-        region = (self.sam_file.getrname(match.reference_id),
-                  match.pos, match.reference_end)
+        region = Region(self.sam_file.getrname(match.reference_id),
+                        match.pos, match.reference_end)
         #print('Querying for exons...', file=sys.stderr)
         try:
-            for arr in self.tabix.query(*region):
-                record = GTFFeature.parse(arr=arr)
-                if record.feature != 'exon':
+            first = True
+            for arr in self.tabix.query(*region.to_tuple()):
+                exon = GTFFeature.parse(arr=arr)
+                if exon.feature != 'exon':
                     continue  # we look for overlapping transcripts
-                if record.attrs['transcript_type'] != 'protein_coding':
+                if exon.attrs['transcript_type'] != 'protein_coding':
                     continue  # we are only interested in these
-                print(record)
+                if match_strand == exon.strand:
+                    continue  # must be on different strands
+                overlap_type = self.classify_overlap(
+                    [region.start, region.end],
+                    [exon.start, exon.end])
+                if first:
+                    # print('MATCH', match, file=sys.stderr)
+                    first = False
+                # print('TARGET', exon, file=sys.stderr)
+                window_5 = exon.get_5_prime_window(region)
+                window_3 = exon.get_3_prime_window(region)
+                classes = self.compute_classes(exon, window_5, window_3)
+                # generate and write out OutputRecord
+                out = OutputRecord(region, exon, linc_tx, window_5, window_3,
+                                   classes)
+                print(out.to_tsv(), file=self.args.output_tsv)
         except tabix.TabixError as e:
             pass  # swallow, probably some unplaced region
-        #for exon in self.db.region(region=region, featuretype=['exon']):
-        #    transcript = self.db[exon.attributes['transcript_id'][0]]
-        #    if match_strand == exon.strand:
-        #        continue  # does not match signal we are looking for
-        #    if transcript.attributes['transcript_type'] != 'protein_coding':
-        #        continue  # does not code for a protein
-        #    print('----\nMATCH\n{}\n----\nEXON\n{}\n----\nIN TRANSCRIPT\n{}\n'.format(match, exon, transcript),
-        #          file=sys.stderr)
+
+    def compute_classes(self, exon, window_5, window_3):
+        classes = []
+        if window_5.is_overlapping:
+            classes.append('retain_intron_5')
+        if window_3.is_overlapping:
+            classes.append('retain_intron_3')
+        if window_5.is_overlapping and window_3.is_overlapping:
+            classes.append('skip_exon')
+        return classes
+
+    def classify_overlap(self, region1, region2):
+        (s1, e1) = region1
+        (s2, e2) = region2
+        
+        if s1 < s2 and e1 >= s2 and e1 <= e2:
+            return "lincRNA partially overlaps exon's upstream"
+        elif e1 > e2 and s1 >= s2 and s1 <= e2:
+            return "lincRNA partially overlaps exon's downstream"
+        elif s1 <= s2 and e1>=e2:
+            return "exon is flanked by lincrna"
+        elif s1 >= s2 and e1<=e2:       
+            return "exon flanks the lincrna"
 
 
 def main():
@@ -197,6 +257,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--gencode-gtf', type=str, required=True)
     parser.add_argument('--alignment-bam', type=str, required=True)
+    parser.add_argument('--output-tsv', type=argparse.FileType('wt'),
+                        default=sys.stdout)
     args = parser.parse_args()
 
     App(args).run()
