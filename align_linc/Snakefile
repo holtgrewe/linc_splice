@@ -17,11 +17,13 @@ module use /scratch/biocore/ostolpe/tools/easybuild/modules/all
 rule all:
     input:
         LINC_FASTA,
-        'alignments.bam'
+        'bwasw.alignments.bam',
+        'bwamem.alignments.bam',
+        'bowtie2.alignments.bam'
 
 rule concat:
-    input: ['transcripts/{chunk:02d}.bam'.format(chunk=i) for i in range(CHUNKS)]
-    output: 'alignments.bam'
+    input: ['transcripts/{{prog}}.{chunk:02d}.bam'.format(chunk=i) for i in range(CHUNKS)]
+    output: '{prog}.alignments.bam'
     shell:
         """
         {PREFIX}
@@ -32,9 +34,9 @@ rule concat:
         samtools cat -o {output} {input}
         """
 
-rule align:
+rule align_bwasw:
     input: 'transcripts/{chunk}.fa'
-    output: 'transcripts/{chunk}.bam'
+    output: 'transcripts/bwasw.{chunk}.bam'
     shell:
         r"""
         {PREFIX}
@@ -43,10 +45,60 @@ rule align:
         module load SAMtools
 
         bwa bwasw \
+            -T 16 \
+            -z 5 \
             /scratch/biocore/mholtgr/cubi_foundation/static_data/precomputed/BWA/0.7.11/hg19/2015-05-29/hg19.fa \
             {input} \
         | samtools view -Sb - \
         > {output}
+        """
+
+rule align_bwamem:
+    input: 'transcripts/{chunk}.fa'
+    output: 'transcripts/bwamem.{chunk}.bam'
+    shell:
+        r"""
+        {PREFIX}
+
+        module load BWA
+        module load SAMtools
+
+        bwa mem \
+            -T 16 \
+            /scratch/biocore/mholtgr/cubi_foundation/static_data/precomputed/BWA/0.7.11/hg19/2015-05-29/hg19.fa \
+            {input} \
+        | samtools view -Sb - \
+        > {output}
+        """
+
+rule align_bowtie2:
+    input: 'transcripts/{chunk}.fq'
+    output: 'transcripts/bowtie2.{chunk}.bam'
+    shell:
+        r"""
+        {PREFIX}
+
+        module load Bowtie2
+        module load SAMtools
+
+        bowtie2 \
+            --local \
+            --mm \
+            --very-sensitive-local \
+            -x /scratch/biocore/mholtgr/cubi_foundation/static_data/precomputed/Bowtie2/2.2.5/GRCh37/g1k_phase1/human_g1k_v37 \
+            -U {input} \
+        | sed -e 's/SN:/SN:chr/' \
+        | awk -F '\t' 'BEGIN {{OFS = FS}} {{ if ($1 ~ /^@SQ/) {{ print $0 }} else {{ $3 = "chr"$3; print $0 }} }}' \
+        | samtools view -Sb - \
+        > {output}
+        """
+
+rule to_fq:
+    input: 'transcripts/{chunk}.fa'
+    output: 'transcripts/{chunk}.fq'
+    shell:
+        """
+        ./fasta_to_fastq.pl {input} >{output}
         """
 
 rule split:
