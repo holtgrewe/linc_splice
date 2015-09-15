@@ -15,7 +15,8 @@
 # change log (reverse chronological) #
 ######################################
 
-# 2015-09-15: added explicit name definitions to integrated data
+# 2015-09-15: added lncRNA:splice-site binding score to integrated data
+#             added explicit name definitions to integrated data
 # 2015-09-14: added integrated data printing
 #             added extraction of coverage values for downstream introns/exons
 #             added extraction of coverage values for upstream introns/exons
@@ -249,7 +250,7 @@ coverage.downstream<-setNames(unlist(alply(alignments
 
 ```{r integrate.coverage}
 # integrate necessary coverage values and meta data into one data frame
-coverage<-setNames(cbind(alignments[,c(1,7,13:16)]
+coverage<-setNames(cbind(alignments[,c(1,7,13:17)]
                         ,coverage.lnc_rnas
                         ,coverage.upstream
                         ,coverage.downstream
@@ -260,6 +261,7 @@ coverage<-setNames(cbind(alignments[,c(1,7,13:16)]
                     ,"idx.upstream"
                     ,"type.downstream"
                     ,"idx.downstream"
+                    ,"binding_score"
                     ,"coverage.lnc_rna"
                     ,"coverage.upstream"
                     ,"coverage.downstream"
